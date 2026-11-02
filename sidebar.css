@@ -1,0 +1,323 @@
+/* =========================================================
+   Workspace sidebar — one source of truth for every page.
+   sidebar.js injects the markup this file styles, so a page
+   only needs <link rel="stylesheet" href="sidebar.css">.
+
+   SCOPING IS MANDATORY, not stylistic. Boards already own
+   plain .row / .toolbar / .label / .badge selectors. Every
+   rule below is prefixed with .sidebar or .workspace-menu.
+
+   THEMING: the palette is DERIVED from the host page's theme
+   variables, so the panel is literally the canvas palette and
+   follows it if the board's colours ever change. The internal
+   names are --sb-* on purpose: shadowing the board's own --ink
+   / --line inside the panel is exactly how the .toolbar clash
+   happened, and a component that redefines a page's tokens
+   can't be themed. Fallbacks match styles.css and graph.html,
+   so the standalone sidebar.html preview still renders dark
+   even though that page declares no :root palette of its own.
+   ========================================================= */
+
+.sidebar,
+.hamburger,
+.workspace-menu {
+  --sb-panel:     var(--panel, #17171a);                      /* matches .app-icon / .board-toolbar */
+  --sb-elevated:  #1f1f23;                                    /* menus must read above the panel */
+  --sb-ink:       var(--ink, #f4f4f5);
+  --sb-soft:      rgba(244, 244, 245, .78);                   /* row + menu labels */
+  --sb-dim:       var(--dim, var(--ink-dim, #9a9a9e));
+  --sb-hair:      rgba(233, 233, 236, .16);
+  --sb-edge:      rgba(255, 255, 255, .12);                   /* same edge as .board-toolbar */
+  --sb-hover:     var(--hover, rgba(237, 237, 240, .08));
+  --sb-selected:  rgba(237, 237, 240, .14);
+  --sb-accent:    var(--accent, #2f6fed);                     /* the board's active-tool blue */
+  --sb-danger:    #ff6b61;                                    /* #d93025 is unreadable on near-black */
+  --sb-font:      Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: dark;                                         /* native search input + caret */
+}
+
+.sidebar {
+  width: 410px;
+  height: 100vh;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sb-panel);
+  flex: 0 0 410px;
+  transition: margin-left .28s ease;
+  font-family: var(--sb-font);
+  font-size: 13px;
+  color: var(--sb-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Collapse is a margin-left slide, not a width tween: the panel simply
+   leaves the flex row and the canvas region grows into the space. */
+body.collapsed .sidebar { margin-left: -410px; }
+
+.sidebar .top { padding: 11px 10px 0; }
+
+.sidebar .toolbar {
+  height: 23px;
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--sb-dim);
+}
+
+.sidebar .toolbar-actions { margin-left: auto; display: flex; align-items: center; gap: 15px; }
+.sidebar .toolbar svg { width: 17px; height: 17px; stroke-width: 1.7; }
+
+:is(.sidebar, .workspace-menu) .icon-button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  padding: 0;
+  color: var(--sb-dim);
+  background: transparent;
+  cursor: pointer;
+}
+
+:is(.sidebar, .workspace-menu) .icon-button:hover { color: var(--sb-ink); }
+
+.sidebar .search {
+  height: 32px;
+  margin-top: 8px;
+  border: 1px solid var(--sb-hair);
+  border-radius: 8px;
+  background: rgba(233, 233, 236, .06);
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 9px;
+}
+
+.sidebar .search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--sb-ink);
+  font: inherit;
+  background: transparent;
+}
+
+.sidebar .search input::placeholder { color: var(--sb-dim); }
+
+.sidebar kbd {
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--sb-dim);
+  background: rgba(233, 233, 236, .1);
+  font: 10px/1.25 var(--sb-font);
+}
+
+.sidebar .content { padding: 4px 6px 0 10px; }
+
+.sidebar .row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  border-radius: 8px;
+  color: var(--sb-soft);
+  text-decoration: none;
+  cursor: pointer;
+  height: 32px;
+  padding: 0 8px;
+}
+
+.sidebar .row:hover { background: var(--sb-hover); }
+.sidebar .row svg { width: 18px; height: 18px; flex: 0 0 18px; stroke-width: 1.8; color: var(--sb-dim); }
+.sidebar .row .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Rename mode. Stays on the dark palette — no white or light-gray field
+   background while editing — and keeps the row from shifting as the caret
+   appears. Enter commits, Escape cancels, clicking away commits. */
+.sidebar .row .label[contenteditable="true"] {
+  cursor: text;
+  color: var(--sb-ink);
+  caret-color: var(--sb-ink);
+  background: rgba(233, 233, 236, .1);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--sb-accent);
+  border-radius: 4px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.sidebar .section { margin-top: 21px; }
+.sidebar .section .row { color: var(--sb-soft); }
+.sidebar .section .row:hover { background: var(--sb-hover); }
+
+.sidebar .private { margin-top: 4px; }
+.sidebar .page-row { height: 32px; padding-left: 8px; }
+.sidebar .page-row.selected { color: var(--sb-ink); background: var(--sb-selected); }
+.sidebar .page-row.selected:hover { background: rgba(237, 237, 240, .18); }
+
+.sidebar .page-actions {
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  margin-right: 2px;
+  color: var(--sb-dim);
+}
+
+.sidebar .page-link { color: inherit; text-decoration: none; }
+.sidebar .page-actions svg { width: 15px; height: 15px; }
+
+.sidebar .bottom { margin-top: auto; }
+
+.sidebar .footer {
+  height: 35px;
+  border-top: 1px solid var(--sb-hair);
+  display: flex;
+  align-items: center;
+  padding: 0 11px 0 17px;
+}
+
+.sidebar .workspace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sidebar .workspace-name { white-space: nowrap; }
+.sidebar .footer-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--sb-dim); }
+.sidebar .footer-actions svg { width: 16px; height: 16px; stroke-width: 1.7; }
+
+/* ---------- reopen handle: hidden until the panel has slid away ---------- */
+.hamburger {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 35;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sb-edge);
+  border-radius: 8px;
+  color: var(--sb-soft);
+  background: var(--sb-panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-8px);
+  transition: opacity .2s ease, transform .28s ease, background .15s ease, visibility .28s;
+}
+
+body.collapsed .hamburger { opacity: 1; visibility: visible; transform: none; }
+.hamburger svg { width: 18px; height: 18px; stroke-width: 1.8; }
+.hamburger:hover { background: var(--sb-hover); color: var(--sb-ink); }
+
+/* ---------- popup menus (workspace + page), both share this shell ---------- */
+/* Note: no `display` here — the menus are toggled with the [hidden]
+   attribute, and any display value would override the UA's display:none. */
+.workspace-menu {
+  position: fixed;
+  z-index: 40;
+  width: 276px;
+  padding: 6px;
+  border: 1px solid var(--sb-edge);
+  border-radius: 12px;
+  background: var(--sb-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .6);
+  font-family: var(--sb-font);
+  font-size: 13px;
+  color: var(--sb-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.workspace-menu .menu-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 10px;
+}
+
+.workspace-menu .menu-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sb-edge);
+  border-radius: 7px;
+  color: var(--sb-ink);
+  background: #26262c;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.workspace-menu .menu-avatar-sm {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sb-edge);
+  border-radius: 4px;
+  color: var(--sb-ink);
+  background: #26262c;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.workspace-menu .menu-account-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.workspace-menu .menu-account-name { font-weight: 600; color: var(--sb-ink); }
+.workspace-menu .menu-plan { color: var(--sb-dim); font-size: 12px; }
+.workspace-menu .menu-divider { height: 1px; margin: 5px 4px; background: var(--sb-hair); }
+
+.workspace-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--sb-soft);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.workspace-menu .menu-item:hover { background: var(--sb-hover); }
+.workspace-menu .menu-item svg { width: 16px; height: 16px; flex: 0 0 16px; color: var(--sb-dim); stroke-width: 1.8; }
+.workspace-menu .menu-item .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-menu .menu-item.accent { color: var(--sb-accent); }
+.workspace-menu .menu-item.accent svg { color: var(--sb-accent); }
+.workspace-menu .menu-check { margin-left: auto; color: var(--sb-ink) !important; }
+.workspace-menu .menu-item.danger { color: var(--sb-danger); }
+.workspace-menu .menu-item.danger svg { color: var(--sb-danger); }
+
+.workspace-menu .menu-email {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 6px;
+  color: var(--sb-dim);
+  font-size: 12px;
+}
+
+.workspace-menu .menu-email .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-menu .menu-email svg { width: 15px; height: 15px; }
+
+@media (max-width: 499px) {
+  .sidebar { width: 100%; flex-basis: 100%; }
+  body.collapsed .sidebar { margin-left: -100vw; }
+}
